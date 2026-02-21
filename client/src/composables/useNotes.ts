@@ -14,12 +14,14 @@ export interface Note {
 export async function fetchNotes(search?: string): Promise<Note[]> {
   const params = search ? `?search=${encodeURIComponent(search)}` : '';
   const res = await fetch(`${API_BASE}/notes${params}`);
+  if (!res.ok) throw new Error('Failed to fetch notes');
   return res.json();
 }
 
 export async function fetchArchivedNotes(search?: string): Promise<Note[]> {
   const params = search ? `?search=${encodeURIComponent(search)}` : '';
   const res = await fetch(`${API_BASE}/notes/archived${params}`);
+  if (!res.ok) throw new Error('Failed to fetch archived notes');
   return res.json();
 }
 
@@ -35,6 +37,7 @@ export async function createNote(note: { title: string; content: string; tags: s
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(note),
   });
+  if (!res.ok) throw new Error('Failed to create note');
   return res.json();
 }
 

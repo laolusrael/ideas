@@ -3,6 +3,15 @@ import db from './db.js';
 
 const router = express.Router();
 
+function safeParseTags(tags) {
+  if (!tags) return [];
+  try {
+    return typeof tags === 'string' ? JSON.parse(tags) : tags;
+  } catch {
+    return [];
+  }
+}
+
 function generateSummary(content) {
   if (!content) return '';
   const text = content.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
@@ -24,7 +33,7 @@ router.get('/notes', (req, res) => {
 
   const stmt = db.prepare(query);
   const notes = params.length ? stmt.all(...params) : stmt.all();
-  res.json(notes.map(n => ({ ...n, tags: n.tags ? JSON.parse(n.tags) : [] })));
+  res.json(notes.map(n => ({ ...n, tags: safeParseTags(n.tags) })));
 });
 
 router.get('/notes/archived', (req, res) => {
@@ -41,7 +50,7 @@ router.get('/notes/archived', (req, res) => {
 
   const stmt = db.prepare(query);
   const notes = params.length ? stmt.all(...params) : stmt.all();
-  res.json(notes.map(n => ({ ...n, tags: n.tags ? JSON.parse(n.tags) : [] })));
+  res.json(notes.map(n => ({ ...n, tags: safeParseTags(n.tags) })));
 });
 
 router.get('/notes/:id', (req, res) => {
@@ -50,27 +59,39 @@ router.get('/notes/:id', (req, res) => {
   if (!note) {
     return res.status(404).json({ error: 'Note not found' });
   }
-  note.tags = note.tags ? JSON.parse(note.tags) : [];
+  note.tags = safeParseTags(note.tags);
   res.json(note);
 });
 
 router.post('/notes', (req, res) => {
   const { title, content, tags } = req.body;
+
+  if (typeof title !== 'string' || !title.trim()) {
+    return res.status(400).json({ error: 'Title is required' });
+  }
+
+  const validTags = Array.isArray(tags) ? tags.filter(t => typeof t === 'string') : [];
   const summary = generateSummary(content);
-  const tagsJson = JSON.stringify(tags || []);
+  const tagsJson = JSON.stringify(validTags);
 
   const stmt = db.prepare(`
     INSERT INTO notes (title, content, summary, tags)
     VALUES (?, ?, ?, ?)
   `);
-  const result = stmt.run(title, content, summary, tagsJson);
+  const result = stmt.run(title, content || '', summary, tagsJson);
   res.json({ id: result.lastInsertRowid });
 });
 
 router.put('/notes/:id', (req, res) => {
   const { title, content, tags } = req.body;
+
+  if (typeof title !== 'string' || !title.trim()) {
+    return res.status(400).json({ error: 'Title is required' });
+  }
+
+  const validTags = Array.isArray(tags) ? tags.filter(t => typeof t === 'string') : [];
   const summary = generateSummary(content);
-  const tagsJson = JSON.stringify(tags || []);
+  const tagsJson = JSON.stringify(validTags);
 
   const stmt = db.prepare(`
     UPDATE notes
@@ -104,7 +125,7 @@ router.post('/notes/:id/archive', (req, res) => {
     return res.status(404).json({ error: 'Note not found' });
   }
   const note = db.prepare('SELECT * FROM notes WHERE id = ?').get(req.params.id);
-  note.tags = note.tags ? JSON.parse(note.tags) : [];
+  note.tags = safeParseTags(note.tags);
   res.json(note);
 });
 

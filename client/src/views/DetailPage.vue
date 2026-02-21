@@ -27,7 +27,7 @@
         </button>
       </div>
 
-      <div class="detail-content" v-html="note.content"></div>
+      <div class="detail-content" v-html="sanitizedContent"></div>
 
       <div v-if="note.tags.length" class="note-tags" style="margin-top: 32px;">
         <span v-for="tag in note.tags" :key="tag" class="tag">{{ tag }}</span>
@@ -37,8 +37,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import DOMPurify from 'dompurify';
 import { fetchNote, toggleArchive, formatDate, type Note } from '../composables/useNotes';
 import { ArrowLeft, Pencil, Archive } from 'lucide-vue-next';
 
@@ -48,6 +49,11 @@ const router = useRouter();
 const note = ref<Note | null>(null);
 const loading = ref(true);
 const error = ref('');
+
+const sanitizedContent = computed(() => {
+  if (!note.value?.content) return '';
+  return DOMPurify.sanitize(note.value.content);
+});
 
 async function loadNote() {
   loading.value = true;
