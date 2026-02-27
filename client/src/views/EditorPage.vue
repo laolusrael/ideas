@@ -81,9 +81,7 @@ const saving = ref(false);
 
 const editor = useEditor({
   extensions: [
-    StarterKit.configure({
-      taskList: false,
-    }),
+    StarterKit,
     Placeholder.configure({
       placeholder: "Type '/' for commands...",
     }),

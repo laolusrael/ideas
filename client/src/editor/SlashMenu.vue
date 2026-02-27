@@ -1,5 +1,5 @@
 <template>
-  <div class="slash-menu">
+  <div class="slash-menu" ref="menuRef">
     <div class="slash-menu-header" v-if="query">Results for "{{ query }}"</div>
     <div class="slash-menu-items">
       <button
@@ -25,7 +25,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import {
   Text,
   Heading1,
@@ -40,19 +40,30 @@ import {
 } from 'lucide-vue-next';
 
 const props = defineProps<{
+  editor: any;
+  range: any;
   items: Array<{
     title: string;
     description: string;
     icon: string;
     command: (props: any) => void;
   }>;
-  command: (props: any) => void;
   query: string;
   clientRect: () => DOMRect | null;
 }>();
 
 const selectedIndex = ref(0);
 const items = computed(() => props.items || []);
+const menuRef = ref<HTMLElement | null>(null);
+
+function scrollToSelected() {
+  nextTick(() => {
+    const selected = menuRef.value?.querySelector('.is-selected');
+    selected?.scrollIntoView({ block: 'nearest' });
+  });
+}
+
+watch(selectedIndex, scrollToSelected);
 
 const icons: Record<string, any> = {
   Text,
@@ -74,7 +85,7 @@ function getIcon(iconName: string) {
 function selectItem(index: number) {
   const item = items.value[index];
   if (item) {
-    item.command(props);
+    item.command({ editor: props.editor, range: props.range });
   }
 }
 
@@ -85,28 +96,10 @@ watch(
   }
 );
 
-function onKeyDown(event: KeyboardEvent) {
-  if (event.key === 'ArrowUp') {
-    selectedIndex.value = (selectedIndex.value - 1 + items.value.length) % items.value.length;
-    return true;
-  }
-
-  if (event.key === 'ArrowDown') {
-    selectedIndex.value = (selectedIndex.value + 1) % items.value.length;
-    return true;
-  }
-
-  if (event.key === 'Enter') {
-    selectItem(selectedIndex.value);
-    return true;
-  }
-
-  return false;
-}
-
 defineExpose({
-  onKeyDown,
+  selectedIndex,
 });
+
 </script>
 
 <style scoped>

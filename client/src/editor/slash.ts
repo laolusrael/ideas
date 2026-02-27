@@ -4,13 +4,13 @@ import { VueRenderer } from '@tiptap/vue-3';
 import tippy from 'tippy.js';
 import SlashMenu from './SlashMenu.vue';
 
-const getSuggestionItems = ({ query }) => {
+const getSuggestionItems = ({ query }: { query: string }) => {
   return [
     {
       title: 'Text',
       description: 'Plain text paragraph',
       icon: 'Text',
-      command: ({ editor, range }) => {
+      command: ({ editor, range }: { editor: any; range: any }) => {
         editor.chain().focus().deleteRange(range).setParagraph().run();
       },
     },
@@ -18,7 +18,7 @@ const getSuggestionItems = ({ query }) => {
       title: 'Heading 1',
       description: 'Large section heading',
       icon: 'Heading1',
-      command: ({ editor, range }) => {
+      command: ({ editor, range }: { editor: any; range: any }) => {
         editor.chain().focus().deleteRange(range).setHeading({ level: 1 }).run();
       },
     },
@@ -26,7 +26,7 @@ const getSuggestionItems = ({ query }) => {
       title: 'Heading 2',
       description: 'Medium section heading',
       icon: 'Heading2',
-      command: ({ editor, range }) => {
+      command: ({ editor, range }: { editor: any; range: any }) => {
         editor.chain().focus().deleteRange(range).setHeading({ level: 2 }).run();
       },
     },
@@ -34,7 +34,7 @@ const getSuggestionItems = ({ query }) => {
       title: 'Heading 3',
       description: 'Small section heading',
       icon: 'Heading3',
-      command: ({ editor, range }) => {
+      command: ({ editor, range }: { editor: any; range: any }) => {
         editor.chain().focus().deleteRange(range).setHeading({ level: 3 }).run();
       },
     },
@@ -42,7 +42,7 @@ const getSuggestionItems = ({ query }) => {
       title: 'Bullet List',
       description: 'Create a simple bulleted list',
       icon: 'List',
-      command: ({ editor, range }) => {
+      command: ({ editor, range }: { editor: any; range: any }) => {
         editor.chain().focus().deleteRange(range).toggleBulletList().run();
       },
     },
@@ -50,7 +50,7 @@ const getSuggestionItems = ({ query }) => {
       title: 'Ordered List',
       description: 'Create a numbered list',
       icon: 'ListOrdered',
-      command: ({ editor, range }) => {
+      command: ({ editor, range }: { editor: any; range: any }) => {
         editor.chain().focus().deleteRange(range).toggleOrderedList().run();
       },
     },
@@ -58,7 +58,7 @@ const getSuggestionItems = ({ query }) => {
       title: 'Task List',
       description: 'Track tasks with checkboxes',
       icon: 'CheckSquare',
-      command: ({ editor, range }) => {
+      command: ({ editor, range }: { editor: any; range: any }) => {
         editor.chain().focus().deleteRange(range).toggleTaskList().run();
       },
     },
@@ -66,7 +66,7 @@ const getSuggestionItems = ({ query }) => {
       title: 'Blockquote',
       description: 'Capture a quote',
       icon: 'Quote',
-      command: ({ editor, range }) => {
+      command: ({ editor, range }: { editor: any; range: any }) => {
         editor.chain().focus().deleteRange(range).setBlockquote().run();
       },
     },
@@ -74,7 +74,7 @@ const getSuggestionItems = ({ query }) => {
       title: 'Code Block',
       description: 'Capture a code snippet',
       icon: 'Code',
-      command: ({ editor, range }) => {
+      command: ({ editor, range }: { editor: any; range: any }) => {
         editor.chain().focus().deleteRange(range).setCodeBlock().run();
       },
     },
@@ -82,7 +82,7 @@ const getSuggestionItems = ({ query }) => {
       title: 'Divider',
       description: 'Visual divider line',
       icon: 'Minus',
-      command: ({ editor, range }) => {
+      command: ({ editor, range }: { editor: any; range: any }) => {
         editor.chain().focus().deleteRange(range).setHorizontalRule().run();
       },
     },
@@ -96,9 +96,11 @@ const renderItems = {
   render: () => {
     let component: any;
     let popup: any;
+    let currentProps: any;
 
     return {
       onStart: (props: any) => {
+        currentProps = props;
         component = new VueRenderer(SlashMenu, {
           props,
           editor: props.editor,
@@ -120,6 +122,7 @@ const renderItems = {
       },
 
       onUpdate(props: any) {
+        currentProps = props;
         if (!component) return;
         component.updateProps(props);
 
@@ -133,12 +136,40 @@ const renderItems = {
       },
 
       onKeyDown(props: any) {
+        const items = currentProps?.items || [];
+        const selectedIndex = component?.ref?.selectedIndex ?? 0;
+
         if (props.event.key === 'Escape') {
           popup?.[0]?.hide();
           return true;
         }
 
-        return component?.ref?.onKeyDown(props);
+        if (props.event.key === 'ArrowUp') {
+          props.event.preventDefault();
+          if (component?.ref) {
+            component.ref.selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+          }
+          return true;
+        }
+
+        if (props.event.key === 'ArrowDown') {
+          props.event.preventDefault();
+          if (component?.ref) {
+            component.ref.selectedIndex = (selectedIndex + 1) % items.length;
+          }
+          return true;
+        }
+
+        if (props.event.key === 'Enter' && items.length > 0) {
+          const item = items[selectedIndex];
+          if (item) {
+            item.command({ editor: currentProps.editor, range: currentProps.range });
+            popup?.[0]?.hide();
+            return true;
+          }
+        }
+
+        return false;
       },
 
       onExit() {
@@ -156,7 +187,7 @@ export default Extension.create({
     return {
       suggestion: {
         char: '/',
-        command: ({ editor, range, props }) => {
+        command: ({ editor, range, props }: { editor: any; range: any; props: any }) => {
           props.command({ editor, range });
         },
       },
