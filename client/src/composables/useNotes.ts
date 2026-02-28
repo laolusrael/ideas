@@ -1,4 +1,4 @@
-const API_BASE = '/api';
+const API_BASE = window.__TAURI__ ? 'http://localhost:3100/api' : '/api';
 
 export interface Note {
   id: number;
